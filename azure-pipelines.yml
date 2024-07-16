@@ -17,57 +17,53 @@ strategy:
     Python37:
       python.version: '3.7'
 
-stages:
-- stage: BuildAndTest
-  jobs:
-  - job: BuildAndTest
-    steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(python.version)'
-      displayName: 'Use Python $(python.version)'
+jobs:
+- job: BuildAndTest
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
 
-    - script: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-      displayName: 'Install dependencies'
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    displayName: 'Install dependencies'
 
-    - script: |
-        pip install pytest pytest-azurepipelines
-        pytest
-      displayName: 'Run pytest'
+  - script: |
+      pip install pytest pytest-azurepipelines
+      pytest
+    displayName: 'Run pytest'
 
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: "JaCoCo"
-        summaryFileLocation: "$(System.DefaultWorkingDirectory)/**/site/jacoco/jacoco.xml"
-        reportDirectory: "$(System.DefaultWorkingDirectory)/**/site/jacoco"
-        failIfCoverageEmpty: true
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: "JaCoCo"
+      summaryFileLocation: "$(System.DefaultWorkingDirectory)/**/site/jacoco/jacoco.xml"
+      reportDirectory: "$(System.DefaultWorkingDirectory)/**/site/jacoco"
+      failIfCoverageEmpty: true
 
-    - script: |
-        if [ $(succeed) = false ]; then
-          echo "Failing the pipeline as per the succeed parameter."
-          exit 1
-        fi
-      displayName: 'Conditional fail step'
+  - script: |
+      if [ $(succeed) = false ]; then
+        echo "Failing the pipeline as per the succeed parameter."
+        exit 1
+      fi
+    displayName: 'Conditional fail step'
 
-- stage: HandleFailure
+- job: ErrorHandler
   dependsOn: BuildAndTest
   condition: failed()
-  jobs:
-  - job: ErrorHandler
-    pool:
-      vmImage: 'windows-latest'
-    steps:
-    - task: Bash@3
-      inputs:
-        targetType: 'inline'
-        script: |
-          az boards work-item create \
-            --title "Build $(Build.BuildNumber) failed" \
-            --type bug \
-            --org $(System.TeamFoundationCollectionUri) \
-            --project $(System.TeamProject)
-      env: 
-        AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
-      displayName: 'Create work item on failure'
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        az boards work-item create \
+          --title "Build $(Build.BuildNumber) failed" \
+          --type bug \
+          --org $(System.TeamFoundationCollectionUri) \
+          --project $(System.TeamProject)
+    env: 
+      AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
+    displayName: 'Create work item on failure'
