@@ -7,9 +7,6 @@ parameters:
 trigger:
 - main
 
-pool:
-  vmImage: windows-latest
-
 strategy:
   matrix:
     Python36:
@@ -19,6 +16,8 @@ strategy:
 
 jobs:
 - job: BuildAndTest
+  pool:
+    vmImage: windows-latest
   steps:
   - task: UsePythonVersion@0
     inputs:
